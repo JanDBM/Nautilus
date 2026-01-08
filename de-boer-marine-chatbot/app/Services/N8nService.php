@@ -24,14 +24,16 @@ class N8nService
         }
 
         try {
-            // Force 50 second timeout
-            $timeoutSec = 50;
+            // Force 5 minutes timeout
+            $timeoutSec = 300;
             $retries = max(0, min(5, (int) ($config->retries ?? 1)));
 
+            $sessionId = session()->getId();
             $payload = [
                 'message' => $message,
                 'conversation_id' => $conversationId,
-                'timestamp' => now()->toIso8601String()
+                'timestamp' => now()->toIso8601String(),
+                'session_id' => $sessionId
             ];
 
             $headers = [];
@@ -42,7 +44,8 @@ class N8nService
             $query = [
                 'message' => $message,
                 'conversation_id' => $conversationId,
-                'timestamp' => $payload['timestamp']
+                'timestamp' => $payload['timestamp'],
+                'session_id' => $sessionId
             ];
 
             $separator = str_contains($config->webhook_url, '?') ? '&' : '?';
@@ -117,23 +120,26 @@ class N8nService
     public function testConnection(string $webhookUrl, ?string $apiKey = null): array
     {
         try {
-            $timeoutSec = max(1, min(60, (int) ceil(10000 / 1000)));
+            $timeoutSec = 300;
             $retries = 1;
             $headers = [];
             if ($apiKey) {
                 $headers['Authorization'] = 'Bearer ' . $apiKey;
             }
 
+            $sessionId = session()->getId();
             $payload = [
                 'message' => 'test_connection',
                 'test' => true,
-                'timestamp' => now()->toIso8601String()
+                'timestamp' => now()->toIso8601String(),
+                'session_id' => $sessionId
             ];
 
             $query = [
                 'message' => 'test_connection',
                 'test' => true,
-                'timestamp' => $payload['timestamp']
+                'timestamp' => $payload['timestamp'],
+                'session_id' => $sessionId
             ];
 
             $separator = str_contains($webhookUrl, '?') ? '&' : '?';
@@ -183,15 +189,20 @@ class N8nService
                 $headers['Authorization'] = 'Bearer ' . $apiKey;
             }
 
-            $response = Http::timeout(3)
+            $sessionId = session()->getId();
+            $separator = str_contains($webhookUrl, '?') ? '&' : '?';
+            $getUrl = $webhookUrl . $separator . http_build_query(['session_id' => $sessionId]);
+
+            $response = Http::timeout(300)
                 ->withHeaders($headers)
-                ->get($webhookUrl);
+                ->get($getUrl);
 
             if ($response->status() === 404 && str_contains($webhookUrl, '/webhook-test/')) {
                 $productionUrl = str_replace('/webhook-test/', '/webhook/', $webhookUrl);
-                $response = Http::timeout(3)
+                $getUrl = $productionUrl . $separator . http_build_query(['session_id' => $sessionId]);
+                $response = Http::timeout(300)
                     ->withHeaders($headers)
-                    ->get($productionUrl);
+                    ->get($getUrl);
             }
 
             if ($response->successful()) {
