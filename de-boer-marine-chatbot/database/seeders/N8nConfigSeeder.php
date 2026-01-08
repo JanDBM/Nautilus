@@ -14,7 +14,7 @@ class N8nConfigSeeder extends Seeder
     {
         // Create a sample n8n configuration for testing
         N8nConfig::create([
-            'webhook_url' => 'http://10.1.42.123:5678/webhook-test/d12b6693-f02e-4403-a96c-fcc506136aed',
+            'webhook_url' => 'http://10.1.42.123:5678/webhook/500adb4a-82ba-4fbf-b5f7-c164cf308fbd',
             'api_key' => null,
             'is_active' => true,
         ]);
